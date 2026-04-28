@@ -11,16 +11,24 @@ os.makedirs("tmp", exist_ok=True)
 app = App(token=os.environ["SLACK_BOT_TOKEN"], signing_secret=os.environ["SLACK_SIGNING_SECRET"])
 instagram_reel = re.compile(r"https://(?:www\.)?instagram\.com/reel/[^\s<>]+")
 
+
 @app.message(instagram_reel)
 def handle_reel(message, say, client):
     url = re.search(instagram_reel, message["text"]).group(0)
     ts_timestamp = str(int(time.time())) # pmo
     output_path = f"tmp/reel_{ts_timestamp}.mp4"
-    ydl_opts = {"outtmpl": output_path, "quiet": True}
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    yt_dlp_settings = {
+        "outtmpl": output_path,
+        "quiet": True,
+        "merge_output_format": "mp4",
+        "format": "bestvideo+bestaudio/best",
+    }
+    with yt_dlp.YoutubeDL(yt_dlp_settings) as ydl:
         ydl.download([url])
     print(f"url: {url}")
+    print(f"vidya path: {output_path}")
     say(f"url: {url}")
+    os.remove(output_path)
 
 @app.event("message")
 def msg(body, logger):
