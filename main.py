@@ -3,15 +3,20 @@ import re
 import yt_dlp
 import time
 import subprocess
+from instagrapi import Client
 from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-load_dotenv() # TODO: add user/pass fields (optional)
+load_dotenv()
 os.makedirs("tmp", exist_ok=True)
 os.makedirs("tmp/vids", exist_ok=True)
 os.makedirs("tmp/pics", exist_ok=True)
 
+ig = None
+if os.environ.get("INSTAGRAM_USERNAME") and os.environ.get("INSTAGRAM_PASSWORD"):
+    ig = Client()
+    ig.login(os.environ["INSTAGRAM_USERNAME"], os.environ["INSTAGRAM_PASSWORD"])
 app = App(token=os.environ["SLACK_BOT_TOKEN"], signing_secret=os.environ["SLACK_SIGNING_SECRET"])
 
 # figure out the file size limit in one go
@@ -24,6 +29,7 @@ instagram_reel = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?reel/[
 instagram_post = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?p/[^\s<>]+")
 instagram_story = re.compile(r"https://(?:www\.)?instagram\.com/stories/[^\s<>]+")
 
+# cringe
 def compress_video(input_path, output_path, target_mb):
     target_bits = target_mb * 8 * 1024 * 1024
     # get duration
