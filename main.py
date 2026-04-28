@@ -7,21 +7,23 @@ from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-load_dotenv()
+load_dotenv() # TODO: add user/pass fields (optional)
 os.makedirs("tmp", exist_ok=True)
 os.makedirs("tmp/vids", exist_ok=True)
 os.makedirs("tmp/pics", exist_ok=True)
 
 app = App(token=os.environ["SLACK_BOT_TOKEN"], signing_secret=os.environ["SLACK_SIGNING_SECRET"])
 
-# fetch once at startup
+# figure out the file size limit in one go
 team = app.client.team_info()
 plan = team["team"].get("plan", "free")
 size_limit_mb = 1000 if plan == "pro" else 5
 
+# fuck these regexes
 instagram_reel = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?reel/[^\s<>]+")
 instagram_post = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?p/[^\s<>]+")
-s
+instagram_story = re.compile(r"https://(?:www\.)?instagram\.com/stories/[^\s<>]+")
+
 def compress_video(input_path, output_path, target_mb):
     target_bits = target_mb * 8 * 1024 * 1024
     # get duration
