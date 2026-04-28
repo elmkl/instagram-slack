@@ -6,9 +6,13 @@ load_dotenv()
 
 app = App(token=os.environ["SLACK_BOT_TOKEN"], signing_secret=os.environ["SLACK_SIGNING_SECRET"])
 
+@app.event("message")
+def msg(body, logger):
+    pass
+
 @app.message("ping")
 def ping(message, say):
-    print(f"Got message: {message}")
+    print(f"message: {message}")
     say("pong")
     
 if __name__ == "__main__":
