@@ -10,7 +10,7 @@ load_dotenv()
 os.makedirs("tmp", exist_ok=True)
 
 app = App(token=os.environ["SLACK_BOT_TOKEN"], signing_secret=os.environ["SLACK_SIGNING_SECRET"])
-instagram_reel = re.compile(r"https://(?:www\.)?instagram\.com/reel/[^\s<>]+")
+instagram_reel = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?reel/[^\s<>]+")
 instagram_post = re.compile(r"https://(?:www\.)?instagram\.com/p/[^\s<>]+")
 
 @app.message(instagram_post)
@@ -42,9 +42,9 @@ def handle_reel(message, say, client):
             ydl.download([url])
     except yt_dlp.utils.DownloadError as e:
         if "empty media response" in str(e):
-            say("this reel is private or age restricted")
+            client.chat_postEphemeral(channel=channel, user=message["user"], text="this reel is private or age restricted")
         else:
-            say("invalid url")
+            client.chat_postEphemeral(channel=channel, user=message["user"], text="invalid url")
         return
     print(f"url: {url}")
     print(f"vidya path: {output_path}")
