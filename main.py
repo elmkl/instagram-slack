@@ -5,6 +5,7 @@ import time
 from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+
 load_dotenv()
 os.makedirs("tmp", exist_ok=True)
 
@@ -19,6 +20,11 @@ def handle_post(message, say, client):
 
 @app.message(instagram_reel)
 def handle_reel(message, say, client):
+    #before everything, figure out the file limit
+    team = client.team_info()
+    plan = team["team"]["plan"]
+    size_limit_mb = 1000 if plan == "pro" else 5
+
     url = re.search(instagram_reel, message["text"]).group(0)
     channel = message["channel"]
     ts_timestamp = str(int(time.time())) # pmo
@@ -33,6 +39,11 @@ def handle_reel(message, say, client):
         ydl.download([url])
     print(f"url: {url}")
     print(f"vidya path: {output_path}")
+    file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+    if file_size_mb > size_limit_mb:
+        say(f"fuck")
+        print(f"compress please")
+        return
     try:
         client.files_upload_v2(channel=channel, file=output_path, filename="reel.mp4")
     finally:
