@@ -35,9 +35,17 @@ def handle_reel(message, say, client):
         "quiet": True,
         "merge_output_format": "mp4",
         "format": "bestvideo+bestaudio/best",
+        "cookiesfrombrowser": ("firefox",),
     }
-    with yt_dlp.YoutubeDL(yt_dlp_settings) as ydl:
-        ydl.download([url])
+    try:
+        with yt_dlp.YoutubeDL(yt_dlp_settings) as ydl:
+            ydl.download([url])
+    except yt_dlp.utils.DownloadError as e:
+        if "empty media response" in str(e):
+            say("this reel is private or age restricted")
+        else:
+            say("invalid url")
+        return
     print(f"url: {url}")
     print(f"vidya path: {output_path}")
 
