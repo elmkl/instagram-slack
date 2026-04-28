@@ -8,6 +8,8 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 load_dotenv()
 os.makedirs("tmp", exist_ok=True)
+os.makedirs("tmp/vids", exist_ok=True)
+os.makedirs("tmp/pics", exist_ok=True)
 
 app = App(token=os.environ["SLACK_BOT_TOKEN"], signing_secret=os.environ["SLACK_SIGNING_SECRET"])
 instagram_reel = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?reel/[^\s<>]+")
@@ -15,8 +17,8 @@ instagram_post = re.compile(r"https://(?:www\.)?instagram\.com/p/[^\s<>]+")
 
 @app.message(instagram_post)
 def handle_post(message, say, client):
-    url = re.search(instagram_post, message["text"]).group(0)
-    say(f"no")
+    # pmo
+    say("pmo")
 
 @app.message(instagram_reel)
 def handle_reel(message, say, client):
@@ -29,7 +31,7 @@ def handle_reel(message, say, client):
     url = re.search(instagram_reel, message["text"]).group(0)
     channel = message["channel"]
     ts_timestamp = str(int(time.time())) # pmo
-    output_path = f"tmp/reel_{ts_timestamp}.mp4"
+    output_path = f"tmp/vids/reel_{ts_timestamp}.mp4"
     yt_dlp_settings = {
         "outtmpl": output_path,
         "quiet": True,
@@ -37,6 +39,7 @@ def handle_reel(message, say, client):
         "format": "bestvideo+bestaudio/best",
         "cookiesfrombrowser": ("firefox",),
     }
+    #proceed with downloading
     try:
         with yt_dlp.YoutubeDL(yt_dlp_settings) as ydl:
             ydl.download([url])
@@ -59,6 +62,7 @@ def handle_reel(message, say, client):
     # upload the video
     try:
         client.files_upload_v2(channel=channel, file=output_path, filename="reel.mp4")
+        print(f"video sent")
     finally:
         os.remove(output_path)
 
