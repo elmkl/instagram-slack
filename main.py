@@ -20,8 +20,8 @@ plan = team["team"].get("plan", "free")
 size_limit_mb = 1000 if plan == "pro" else 5
 
 instagram_reel = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?reel/[^\s<>]+")
-instagram_post = re.compile(r"https://(?:www\.)?instagram\.com/p/[^\s<>]+")
-
+instagram_post = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?p/[^\s<>]+")
+s
 def compress_video(input_path, output_path, target_mb):
     target_bits = target_mb * 8 * 1024 * 1024
     # get duration
@@ -102,7 +102,7 @@ def msg(body, logger):
 def ping(message, say):
     print(f"message: {message}")
     say("pong")
-    
+
 if __name__ == "__main__":
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     handler.start()
