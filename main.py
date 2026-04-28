@@ -13,10 +13,12 @@ os.makedirs("tmp", exist_ok=True)
 os.makedirs("tmp/vids", exist_ok=True)
 os.makedirs("tmp/pics", exist_ok=True)
 
+# login to instagram if session id is provided
 ig = None
-if os.environ.get("INSTAGRAM_USERNAME") and os.environ.get("INSTAGRAM_PASSWORD"):
+if os.environ.get("INSTAGRAM_SESSIONID"):
     ig = Client()
-    ig.login(os.environ["INSTAGRAM_USERNAME"], os.environ["INSTAGRAM_PASSWORD"])
+    ig.login_by_sessionid(os.environ["INSTAGRAM_SESSIONID"])
+
 app = App(token=os.environ["SLACK_BOT_TOKEN"], signing_secret=os.environ["SLACK_SIGNING_SECRET"])
 
 # figure out the file size limit in one go
@@ -48,11 +50,52 @@ def compress_video(input_path, output_path, target_mb):
 
 @app.message(instagram_post)
 def handle_post(message, say, client):
-    # The problem with this is that this requires an ig account, 
-    # so I don't know what to do since I don't want to put user/password in .env
-    # that's ghetto asf. so:
-    # pmo
-    say("pmo")
+    if not ig:
+        say("not logged into instagram")
+        return
+    
+    url = re.search(instagram_post, message["text"]).group(0)
+    channel = message["channel"]
+    user = message["user"]
+    ts_timestamp = str(int(time.time()))
+
+    client.chat_postEphemeral(channel=channel, user=user, text="Downloading...")
+
+    try:
+        media_pk = ig.media_pk_from_url(url)
+        media = ig.media_info(media_pk)
+
+        if media.media_type == 1:
+            # photo
+            path = ig.photo_download(media_pk, folder="tmp/pics")
+            paths = [path]
+        elif media.media_type == 2:
+            # video post
+            path = ig.clip_download(media_pk, folder="tmp/vids")
+            paths = [path]
+        elif media.media_type == 8:
+            # carousel (mixed photos/videos)
+            paths = ig.album_download(media_pk, folder="tmp/pics")
+        else:
+            client.chat_postEphemeral(channel=channel, user=user, text="Unsupported post type.")
+            return
+    except Exception as e:
+        client.chat_postEphemeral(channel=channel, user=user, text="Couldn't download this post. It may be private or age-restricted.")
+        return
+
+    try:
+        for path in paths:
+            filepath = str(path)
+            file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
+            if file_size_mb > size_limit_mb:
+                # TODO: compressioon for this too???
+                client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, too large to upload.")
+                continue
+            client.files_upload_v2(channel=channel, file=filepath, filename=os.path.basename(filepath))
+    finally:
+        for path in paths:
+            if os.path.exists(str(path)):
+                os.remove(str(path))
 
 @app.message(instagram_reel)
 def handle_reel(message, say, client):
@@ -63,21 +106,27 @@ def handle_reel(message, say, client):
     output_path = f"tmp/vids/reel_{ts_timestamp}.mp4"
 
     client.chat_postEphemeral(channel=channel, user=user, text="Downloading...")
-    # downlaoding into a temp file (best quality; merge if needed)
-    yt_dlp_settings = {
-        "outtmpl": output_path,
-        "quiet": True,
-        "merge_output_format": "mp4",
-        "format": "bestvideo+bestaudio/best",
-        "cookiesfrombrowser": ("firefox",),
-    }
-    #proceed with downloading
+
+    # use instagrapi if available, else fall back to yt-dlp
     try:
-        with yt_dlp.YoutubeDL(yt_dlp_settings) as ydl:
-            ydl.download([url])
-    except yt_dlp.utils.DownloadError as e:
+        if ig:
+            media_pk = ig.media_pk_from_url(url)
+            path = ig.clip_download(media_pk, folder="tmp/vids")
+            os.rename(path, output_path)
+        else:
+            # downlaoding into a temp file (best quality; merge if needed)
+            yt_dlp_settings = {
+                "outtmpl": output_path,
+                "quiet": True,
+                "merge_output_format": "mp4",
+                "format": "bestvideo+bestaudio/best",
+                "cookiesfrombrowser": ("firefox",),
+            }
+            with yt_dlp.YoutubeDL(yt_dlp_settings) as ydl:
+                ydl.download([url])
+    except Exception as e:
         if "empty media response" in str(e):
-            client.chat_postEphemeral(channel=channel, user=user, text="This reel is private or age restricted.")
+            client.chat_postEphemeral(channel=channel, user=user, text="This reel is either private or age restricted.")
         else:
             client.chat_postEphemeral(channel=channel, user=user, text="Invalid URL or download failed.")
         return
@@ -91,7 +140,7 @@ def handle_reel(message, say, client):
     try:
         if file_size_mb > size_limit_mb:
             # compress the video
-            client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, we are compressing...")
+            client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, compressing...")
             compressed_path = f"tmp/vids/reel_{ts_timestamp}_compressed.mp4"
             compress_video(output_path, compressed_path, size_limit_mb * 0.9)
             os.remove(output_path)
@@ -101,6 +150,37 @@ def handle_reel(message, say, client):
     finally:
         if os.path.exists(output_path):
             os.remove(output_path)
+
+@app.message(instagram_story)
+def handle_story(message, say, client):
+    if not ig:
+        say("not logged into instagram")
+        return
+    
+    url = re.search(instagram_story, message["text"]).group(0)
+    channel = message["channel"]
+    user = message["user"]
+
+    client.chat_postEphemeral(channel=channel, user=user, text="Downloading story...")
+
+    try:
+        story_pk = ig.story_pk_from_url(url)
+        path = ig.story_download(story_pk, folder="tmp/vids")
+    except Exception as e:
+        client.chat_postEphemeral(channel=channel, user=user, text="Couldn't download this story. It's either expired or private.")
+        return
+
+    filepath = str(path)
+    file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
+    try:
+        if file_size_mb > size_limit_mb:
+            # TODO: compress this too
+            client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, too large to upload.")
+            return
+        client.files_upload_v2(channel=channel, file=filepath, filename=os.path.basename(filepath))
+    finally:
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
 @app.event("message")
 def msg(body, logger):
