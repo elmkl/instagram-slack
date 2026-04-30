@@ -67,11 +67,9 @@ def post_next_reel(user, client, channel, size_limit_mb):
         del doomscrollers[user]
         return
 
-    # delete previous reel and button messages
+    # delete previous button only
     delete_message(client, channel, session["button_ts"])
-    delete_message(client, channel, session["reel_ts"]) # TODO: verify if this works
     session["button_ts"] = None
-    session["reel_ts"] = None
 
     # let user know we are loading the next one
     client.chat_postEphemeral(channel=channel, user=user, text=f"Loading reel {index + 1} of {len(reels)}...")
@@ -86,12 +84,9 @@ def post_next_reel(user, client, channel, size_limit_mb):
         session["index"] += 1
         remaining = len(reels) - session["index"]
 
-        # store reel message ts for deletion on next scroll
-        session["reel_ts"] = get_message_ts(response, channel)
+        # post buttons after the video
+        session["button_ts"] = post_buttons(client, channel, user, remaining)
+        print(f"posted buttons with ts: {int(float(session['button_ts']))}")
 
         # preload next reel in background
         threading.Thread(target=preload_next_reel, args=(session, size_limit_mb), daemon=True).start()
-
-        # post buttons after the video
-        session["button_ts"] = post_buttons(client, channel, user, remaining)
-        print(f"posted buttons with ts: {session['button_ts']}")
