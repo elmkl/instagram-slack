@@ -6,7 +6,6 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from instagram import init_ig, ig, download_ig_post, download_ig_reel, download_ig_story, fetch_account_reels
 from scroll import doomscrollers, post_next_reel
 from utils import delete_message
-from settings import get_channel_settings, toggle_feature, is_channel_owner, post_settings_message
 
 load_dotenv()
 os.makedirs("tmp", exist_ok=True)
@@ -28,7 +27,7 @@ instagram_reel = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?reel/[
 instagram_post = re.compile(r"https://(?:www\.)?instagram\.com/(?:[^/]+/)?p/[^\s<>]+")
 instagram_story = re.compile(r"https://(?:www\.)?instagram\.com/stories/[^\s<>]+")
 
-#### slack ui elements
+#### slack ui elements 
 @app.action("scroll_next")
 def handle_next_button(ack, body, client):
     ack()
@@ -54,59 +53,24 @@ def handle_stop_button(ack, body, client):
         del doomscrollers[user]
     client.chat_postEphemeral(channel=channel, user=user, text="Stopped scrolling.")
 
-### settings slash command
-@app.command("/settings")
-def handle_settings(ack, command, client):
-    ack()
-    user = command["user_id"]
-    channel = command["channel_id"]
-    if not is_channel_owner(client, channel, user):
-        client.chat_postEphemeral(channel=channel, user=user, text="Only the channel owner can change settings.")
-        return
-    post_settings_message(client, channel, user)
+### scroll command
+@app.message(re.compile(r"^scroll (.+)$"))
+def handle_scroll(message, say, client, context):
+    print("scrolled ", context["matches"][0])
+    user = message["user"]
+    channel = message["channel"]
 
-### settings toggle actions
-def make_toggle_handler(feature):
-    def handler(ack, body, client):
-        ack()
-        user = body["user"]["id"]
-        channel = body["actions"][0]["value"]
-        if not is_channel_owner(client, channel, user):
-            client.chat_postEphemeral(channel=channel, user=user, text="Only the channel owner can change settings.")
-            return
-        toggle_feature(channel, feature)
-        post_settings_message(client, channel, user)
-    return handler
-
-app.action("setting_reels")(make_toggle_handler("reels"))
-app.action("setting_posts")(make_toggle_handler("posts"))
-app.action("setting_stories")(make_toggle_handler("stories"))
-app.action("setting_scroll")(make_toggle_handler("scroll"))
-
-### scroll slash command
-@app.command("/scroll")
-def handle_scroll(ack, command, client):
-    ack()
-    user = command["user_id"]
-    channel = command["channel_id"]
-
-    if not get_channel_settings(channel).get("scroll"):
-        client.chat_postEphemeral(channel=channel, user=user, text="Scroll is not enabled in this channel.")
-        return
-
+    # if they are alraedy doomscrolling no scrool
     if user in doomscrollers:
         return
 
+    from instagram import ig
     if not ig:
-        client.chat_postEphemeral(channel=channel, user=user, text="Admin is not logged into instagram.")
+        say("Admin is not logged into instagram")
         return
 
-    username = command["text"].strip()
-    if not username:
-        client.chat_postEphemeral(channel=channel, user=user, text="Usage: /scroll <username>")
-        return
-
-    client.chat_postEphemeral(channel=channel, user=user, text=f"Getting reels from @{username}...")
+    username = context["matches"][0].strip()
+    client.chat_postEphemeral(channel=channel, user=user, text=f"getting reels from @{username}...")
 
     try:
         reels = fetch_account_reels(username, limit=5)
@@ -138,15 +102,15 @@ def ping(message, say):
 
 @app.message(instagram_post)
 def handle_post(message, say, client):
-    channel = message["channel"]
-    user = message["user"]
-    if not get_channel_settings(channel).get("posts"):
-        return
     from instagram import ig
+    if message.get("subtype"):
+        return
     if not ig:
         say("not logged into instagram")
         return
     url = re.search(instagram_post, message["text"]).group(0)
+    channel = message["channel"]
+    user = message["user"]
     client.chat_postEphemeral(channel=channel, user=user, text="Downloading...")
     try:
         download_ig_post(url, size_limit_mb, client, channel, user)
@@ -155,11 +119,11 @@ def handle_post(message, say, client):
 
 @app.message(instagram_reel)
 def handle_reel(message, say, client):
-    channel = message["channel"]
-    user = message["user"]
-    if not get_channel_settings(channel).get("reels"):
+    if message.get("subtype"):
         return
     url = re.search(instagram_reel, message["text"]).group(0)
+    channel = message["channel"]
+    user = message["user"]
     client.chat_postEphemeral(channel=channel, user=user, text="Downloading...")
     try:
         success = download_ig_reel(url, size_limit_mb, client, channel, user)
@@ -173,15 +137,15 @@ def handle_reel(message, say, client):
 
 @app.message(instagram_story)
 def handle_story(message, say, client):
-    channel = message["channel"]
-    user = message["user"]
-    if not get_channel_settings(channel).get("stories"):
-        return
     from instagram import ig
+    if message.get("subtype"):
+        return
     if not ig:
         say("Admin is not logged into instagram")
         return
     url = re.search(instagram_story, message["text"]).group(0)
+    channel = message["channel"]
+    user = message["user"]
     client.chat_postEphemeral(channel=channel, user=user, text="Downloading story...")
     try:
         download_ig_story(url, size_limit_mb, client, channel, user)

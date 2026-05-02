@@ -86,9 +86,15 @@ def download_ig_post(url, size_limit_mb, client, channel, user):
             filepath = str(path)
             file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
             if file_size_mb > size_limit_mb:
-                # TODO: compression for this too???
-                client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, too large to upload.")
-                continue
+                if filepath.endswith(".mp4"):
+                    client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, compressing...")
+                    compressed_path = filepath.replace(".mp4", "_compressed.mp4")
+                    compress_video(filepath, compressed_path, size_limit_mb * 0.9)
+                    os.remove(filepath)
+                    filepath = compressed_path
+                else:
+                    client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, too large to upload.")
+                    continue
             client.files_upload_v2(channel=channel, file=filepath, filename=os.path.basename(filepath))
     finally:
         for path in paths:
@@ -102,9 +108,11 @@ def download_ig_story(url, size_limit_mb, client, channel, user):
     file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
     try:
         if file_size_mb > size_limit_mb:
-            # TODO: compress this too
-            client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, too large to upload.")
-            return
+            client.chat_postEphemeral(channel=channel, user=user, text=f"File is {file_size_mb:.1f}MB, compressing...")
+            compressed_path = filepath.replace(".mp4", "_compressed.mp4")
+            compress_video(filepath, compressed_path, size_limit_mb * 0.9)
+            os.remove(filepath)
+            filepath = compressed_path
         client.files_upload_v2(channel=channel, file=filepath, filename=os.path.basename(filepath))
     finally:
         if os.path.exists(filepath):
