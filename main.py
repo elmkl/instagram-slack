@@ -54,17 +54,18 @@ def handle_stop_button(ack, body, client):
         del doomscrollers[user]
     client.chat_postEphemeral(channel=channel, user=user, text="Stopped scrolling.")
 
-### settings command
-@app.message(re.compile(r"^settings$", re.IGNORECASE))
-def handle_settings(message, client):
-    user = message["user"]
-    channel = message["channel"]
+### settings slash command
+@app.command("/settings")
+def handle_settings(ack, command, client):
+    ack()
+    user = command["user_id"]
+    channel = command["channel_id"]
     if not is_channel_owner(client, channel, user):
         client.chat_postEphemeral(channel=channel, user=user, text="Only the channel owner can change settings.")
         return
     post_settings_message(client, channel, user)
 
-### settings actions
+### settings toggle actions
 def make_toggle_handler(feature):
     def handler(ack, body, client):
         ack()
@@ -82,27 +83,30 @@ app.action("setting_posts")(make_toggle_handler("posts"))
 app.action("setting_stories")(make_toggle_handler("stories"))
 app.action("setting_scroll")(make_toggle_handler("scroll"))
 
-### scroll command
-@app.message(re.compile(r"^scroll (.+)$"))
-def handle_scroll(message, say, client, context):
-    print("scrolled ", context["matches"][0])
-    user = message["user"]
-    channel = message["channel"]
+### scroll slash command
+@app.command("/scroll")
+def handle_scroll(ack, command, client):
+    ack()
+    user = command["user_id"]
+    channel = command["channel_id"]
 
     if not get_channel_settings(channel).get("scroll"):
+        client.chat_postEphemeral(channel=channel, user=user, text="Scroll is not enabled in this channel.")
         return
 
-    # if they are alraedy doomscrolling no scrool
     if user in doomscrollers:
         return
 
-    from instagram import ig
     if not ig:
-        say("Admin is not logged into instagram")
+        client.chat_postEphemeral(channel=channel, user=user, text="Admin is not logged into instagram.")
         return
 
-    username = context["matches"][0].strip()
-    client.chat_postEphemeral(channel=channel, user=user, text=f"getting reels from @{username}...")
+    username = command["text"].strip()
+    if not username:
+        client.chat_postEphemeral(channel=channel, user=user, text="Usage: /scroll <username>")
+        return
+
+    client.chat_postEphemeral(channel=channel, user=user, text=f"Getting reels from @{username}...")
 
     try:
         reels = fetch_account_reels(username, limit=5)
