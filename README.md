@@ -13,8 +13,11 @@ Python 3, ffmpeg, install dependencies with:
 
 ## Setup
 Create an app on Slack and enable Socket Mode.
-On the OAuth & Permissions tab, add these bot scopes: chat:write, chat:write.public, channels:read, groups:read, files:write, and im:write
-In Event Subscriptions, subscribe to message.channels & message.groups
+
+On the OAuth & Permissions tab, add these bot scopes: `chat:write`, `chat:write.public`, `channels:read`, `groups:read`, `files:write`, and `im:write`
+
+In Event Subscriptions, subscribe to `message.channels` & `message.groups`
+
 In Slash Commands, create /scroll and /igsettings commands
 
 Configure your .env as follows:
