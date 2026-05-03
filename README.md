@@ -1,5 +1,9 @@
 # instagram-slack
+<a href="https://slack.com/oauth/v2/authorize?client_id=11009255698258.11005853298405&scope=reactions:write,app_mentions:read,channels:history,channels:read,chat:write,commands,files:write,groups:history,im:history,reactions:read,team:read&user_scope="><img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcSet="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>
+
 This is a Slack bot which downloads & embeds Instagram reels, posts, and stories straight into your channel.
+
+This is being hosted on the free tier of Railway atm so try not to burden the bot too much (invite into your own workspaces or channels).
 
 Upon posting an Instagram link, this bot will download & upload it to your Slack.
 
