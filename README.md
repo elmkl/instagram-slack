@@ -3,7 +3,7 @@
 
 This is a Slack bot which downloads & embeds Instagram reels, posts, and stories straight into your channel.
 
-This is being hosted on the free tier of Railway atm so try not to burden the bot too much (invite into your own workspaces or channels).
+This is being hosted on the free tier of Railway on a nixpacks instance atm so try not to burden the bot too much (like spamming it or inviting it into massive workspaces or channels).
 
 Upon posting an Instagram link, this bot will download & upload it to your Slack.
 
