@@ -8,10 +8,17 @@ ig = None
 
 def init_ig(session_id):
     global ig
-    if session_id:
-        ig = Client()
-        ig.login_by_sessionid(session_id)
-        ig.request_timeout = 30
+    if not session_id:
+        return
+    try:
+        client = Client()
+        client.login_by_sessionid(session_id)
+        client.request_timeout = 30
+        ig = client
+        print("logged into instagram")
+    except Exception as e:
+        print(f"instagram login failed continuing without it: {e}")
+        ig = None
 
 def fetch_account_reels(username, limit=5):
     # fetch reels directly through ig api
