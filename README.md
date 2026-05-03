@@ -7,7 +7,7 @@ This is being hosted on the free tier of Railway on a nixpacks instance atm so t
 
 Upon posting an Instagram link, this bot will download & upload it to your Slack.
 
-You can browse an account's reels using the /scroll command, and you must set up the bot using /igsettings before trying the bot out (every feature is toggled off by default to handle huge workspaces).
+You can browse an account's reels using the `/scroll` command, and you MUST set up the bot using `/igsettings` before trying the bot out (every feature is toggled off by default to handle huge workspaces).
 
 If a file is too large for the workspace's file limit, compression will automatically be done using ffmpeg.
 
