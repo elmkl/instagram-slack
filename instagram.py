@@ -28,7 +28,7 @@ def download_reel_to_file(url, output_path):
         "quiet": True,
         "merge_output_format": "mp4",
         "format": "bestvideo+bestaudio/best",
-        "cookiesfrombrowser": ("firefox",),
+        #"cookiesfrombrowser": ("firefox",),
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
@@ -136,7 +136,7 @@ def download_ig_reel(url, size_limit_mb, client, channel, user):
             "quiet": True,
             "merge_output_format": "mp4",
             "format": "bestvideo+bestaudio/best",
-            "cookiesfrombrowser": ("firefox",),
+            #"cookiesfrombrowser": ("firefox",),
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
