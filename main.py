@@ -1,11 +1,14 @@
 import os
 import re
+import json
+import requests as req
 from flask import Flask, request, redirect
 from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
 from slack_bolt.adapter.flask import SlackRequestHandler
 from slack_sdk.oauth.installation_store import FileInstallationStore
+from slack_sdk.oauth.installation_store.models.installation import Installation
 from slack_sdk.oauth.state_store import FileOAuthStateStore
 from instagram import init_ig, ig, download_ig_post, download_ig_reel, download_ig_story, fetch_account_reels
 from scroll import doomscrollers, post_next_reel
@@ -22,6 +25,9 @@ os.makedirs("./data/states", exist_ok=True)
 # login to instagram for ig API if given access to
 init_ig(os.environ.get("INSTAGRAM_SESSIONID"))
 
+installation_store = FileInstallationStore(base_dir="./data/installations")
+state_store = FileOAuthStateStore(expiration_seconds=600, base_dir="./data/states")
+
 app = App(
     signing_secret=os.environ["SLACK_SIGNING_SECRET"],
     oauth_settings=OAuthSettings(
@@ -30,8 +36,8 @@ app = App(
         scopes=["reactions:write", "app_mentions:read", "channels:history", "channels:read",
                 "chat:write", "commands", "files:write", "groups:history", "groups:read",
                 "im:history", "reactions:read", "team:read"],
-        installation_store=FileInstallationStore(base_dir="./data/installations"),
-        state_store=FileOAuthStateStore(expiration_seconds=600, base_dir="./data/states"),
+        installation_store=installation_store,
+        state_store=state_store,
     )
 )
 
@@ -253,20 +259,34 @@ def events():
 
 @flask_app.route("/slack/oauth_redirect")
 def oauth_redirect():
-    # let bolt handle the oauth exchange, then redirect to index with team+app params
     code = request.args.get("code")
-    if code:
-        import requests as req
-        resp = req.post("https://slack.com/api/oauth.v2.access", data={
-            "code": code,
-            "client_id": os.environ["SLACK_CLIENT_ID"],
-            "client_secret": os.environ["SLACK_CLIENT_SECRET"],
-        }).json()
-        if resp.get("ok"):
-            team_id = resp.get("team", {}).get("id", "")
-            app_id = resp.get("app_id", "")
-            return redirect(f"/?team={team_id}&app={app_id}")
-    return handler.handle(request)
+    if not code:
+        return "Missing code.", 400
+
+    resp = req.post("https://slack.com/api/oauth.v2.access", data={
+        "code": code,
+        "client_id": os.environ["SLACK_CLIENT_ID"],
+        "client_secret": os.environ["SLACK_CLIENT_SECRET"],
+    }).json()
+
+    if not resp.get("ok"):
+        return f"OAuth failed: {resp.get('error')}", 400
+
+    # save the installation manually
+    installation_store.save(Installation(
+        app_id=resp.get("app_id"),
+        enterprise_id=resp.get("enterprise", {}).get("id") if resp.get("enterprise") else None,
+        team_id=resp.get("team", {}).get("id"),
+        team_name=resp.get("team", {}).get("name"),
+        bot_token=resp.get("access_token"),
+        bot_id=resp.get("bot_user_id"),
+        bot_user_id=resp.get("bot_user_id"),
+        installed_at=__import__("datetime").datetime.now().timestamp(),
+    ))
+
+    team_id = resp.get("team", {}).get("id", "")
+    app_id = resp.get("app_id", "")
+    return redirect(f"/?team={team_id}&app={app_id}")
 
 @flask_app.route("/slack/install")
 def install():
