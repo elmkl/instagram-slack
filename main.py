@@ -62,18 +62,32 @@ def get_size_limit(client):
 
 @app.error
 def handle_errors(error, body, logger):
-    if "missing_scope" in str(error):
+    if "missing_scope" in str(error) or "AuthorizeResult" in str(error):
         try:
             channel = body.get("event", {}).get("channel") or body.get("channel_id")
             user = body.get("event", {}).get("user") or body.get("user_id")
-            if channel and user:
-                app.client.chat_postEphemeral(
-                    channel=channel,
-                    user=user,
-                    text="This workspace needs to reinstall the bot with updated permissions. <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
-                )
-        except:
-            pass
+            team_id = body.get("team_id")
+            if user and team_id:
+                from slack_sdk import WebClient
+                # use bot token from installation store if available
+                installation = installation_store.find_installation(team_id=team_id, enterprise_id=body.get("enterprise_id"))
+                token = installation.bot_token if installation else None
+                client = WebClient(token=token)
+                if channel:
+                    try:
+                        client.chat_postEphemeral(
+                            channel=channel,
+                            user=user,
+                            text="This workspace needs to reinstall the bot since I do not have enough permission (sorry). <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
+                        )
+                    except:
+                        # fall back to DM if not in channel
+                        client.chat_postMessage(
+                            channel=user,
+                            text="This workspace needs to reinstall the bot since I do not have enough permission (sorry). <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
+                        )
+        except Exception as inner:
+            print(f"error handler failed: {inner}")
     logger.exception(error)
 
 #### slack ui elements
@@ -132,7 +146,7 @@ app.action("setting_stories")(make_toggle_handler("stories"))
 app.action("setting_scroll")(make_toggle_handler("scroll"))
 
 ### scroll slash command
-@app.command("/igscroll")
+@app.command("/scroll")
 def handle_scroll(ack, command, client):
     ack()
     user = command["user_id"]
@@ -153,7 +167,7 @@ def handle_scroll(ack, command, client):
 
     username = command["text"].strip()
     if not username:
-        client.chat_postEphemeral(channel=channel, user=user, text="Usage: /igscroll <username>")
+        client.chat_postEphemeral(channel=channel, user=user, text="Usage: /scroll <username>")
         return
 
     client.chat_postEphemeral(channel=channel, user=user, text=f"getting reels from @{username}...")
