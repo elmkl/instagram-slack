@@ -1,34 +1,55 @@
-import json
 import os
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import NullPool
 
-SETTINGS_FILE = "settings.json"
+def get_engine():
+    return create_engine(os.environ["DATABASE_URL"], poolclass=NullPool)
 
-def load_settings():
-    if not os.path.exists(SETTINGS_FILE):
-        return {}
-    with open(SETTINGS_FILE, "r") as f:
-        return json.load(f)
+def ensure_table():
+    with get_engine().connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS channel_settings (
+                channel TEXT PRIMARY KEY,
+                reels BOOLEAN NOT NULL DEFAULT FALSE,
+                posts BOOLEAN NOT NULL DEFAULT FALSE,
+                stories BOOLEAN NOT NULL DEFAULT FALSE,
+                scroll BOOLEAN NOT NULL DEFAULT FALSE
+            )
+        """))
+        conn.commit()
 
-def save_settings(settings):
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump(settings, f, indent=2)
+try:
+    ensure_table()
+except Exception as e:
+    print(f"settings table init failed: {e}")
 
 def get_channel_settings(channel):
-    settings = load_settings()
-    return settings.get(channel, {
-        "reels": False,
-        "posts": False,
-        "stories": False,
-        "scroll": False,
-    })
+    try:
+        with get_engine().connect() as conn:
+            row = conn.execute(text("SELECT reels, posts, stories, scroll FROM channel_settings WHERE channel = :c"), {"c": channel}).fetchone()
+            if row:
+                return {"reels": row[0], "posts": row[1], "stories": row[2], "scroll": row[3]}
+    except Exception as e:
+        print(f"get_channel_settings failed: {e}")
+    return {"reels": False, "posts": False, "stories": False, "scroll": False}
 
 def toggle_feature(channel, feature):
-    settings = load_settings()
-    if channel not in settings:
-        settings[channel] = {"reels": False, "posts": False, "stories": False, "scroll": False}
-    settings[channel][feature] = not settings[channel].get(feature, False)
-    save_settings(settings)
-    return settings[channel][feature]
+    try:
+        with get_engine().connect() as conn:
+            conn.execute(text("""
+                INSERT INTO channel_settings (channel, reels, posts, stories, scroll)
+                VALUES (:c, FALSE, FALSE, FALSE, FALSE)
+                ON CONFLICT (channel) DO NOTHING
+            """), {"c": channel})
+            conn.execute(text(f"""
+                UPDATE channel_settings SET {feature} = NOT {feature} WHERE channel = :c
+            """), {"c": channel})
+            conn.commit()
+            row = conn.execute(text(f"SELECT {feature} FROM channel_settings WHERE channel = :c"), {"c": channel}).fetchone()
+            return row[0] if row else False
+    except Exception as e:
+        print(f"toggle_feature failed: {e}")
+        return False
 
 def is_channel_owner(client, channel, user):
     try:
@@ -87,10 +108,9 @@ def post_settings_message(client, channel, user):
         )
     except Exception as e:
         if "not_in_channel" in str(e):
-            # bot isn't in the channel yet, DM the user instead
             client.chat_postMessage(
                 channel=user,
-                text="I'm not in that channel yet. Please invite me first with `/invite @igscroller`, then run `/igsettings` again."
+                text="I am not in that channel yet. Please invite me first with `/invite @igscroller`, then run `/igsettings` again."
             )
         else:
             raise

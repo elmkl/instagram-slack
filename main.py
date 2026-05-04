@@ -8,9 +8,10 @@ from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
 from slack_bolt.adapter.flask import SlackRequestHandler
-from slack_sdk.oauth.installation_store import FileInstallationStore
+from slack_sdk.oauth.installation_store.sqlalchemy import SQLAlchemyInstallationStore
 from slack_sdk.oauth.installation_store.models.installation import Installation
-from slack_sdk.oauth.state_store import FileOAuthStateStore
+from slack_sdk.oauth.state_store.sqlalchemy import SQLAlchemyOAuthStateStore
+from sqlalchemy import create_engine
 from instagram import init_ig, ig, download_ig_post, download_ig_reel, download_ig_story, fetch_account_reels
 from scroll import doomscrollers, post_next_reel
 from utils import delete_message
@@ -20,14 +21,18 @@ load_dotenv()
 os.makedirs("tmp", exist_ok=True)
 os.makedirs("tmp/vids", exist_ok=True)
 os.makedirs("tmp/pics", exist_ok=True)
-os.makedirs("./data/installations", exist_ok=True)
-os.makedirs("./data/states", exist_ok=True)
 
 # login to instagram for ig API if given access to
 init_ig(os.environ.get("INSTAGRAM_SESSIONID"))
 
-installation_store = FileInstallationStore(base_dir="./data/installations")
-state_store = FileOAuthStateStore(expiration_seconds=600, base_dir="./data/states")
+engine = create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
+installation_store = SQLAlchemyInstallationStore(client_id=os.environ["SLACK_CLIENT_ID"], engine=engine)
+state_store = SQLAlchemyOAuthStateStore(expiration_seconds=600, engine=engine)
+try:
+    installation_store.metadata.create_all(engine)
+    state_store.metadata.create_all(engine)
+except Exception as e:
+    print(f"db init failed, will retry on first request: {e}")
 
 app = App(
     signing_secret=os.environ["SLACK_SIGNING_SECRET"],
@@ -276,17 +281,27 @@ def oauth_redirect():
     # fetch bot_id via auth.test
     from slack_sdk import WebClient
     bot_token = resp.get("access_token")
-    auth = WebClient(token=bot_token).auth_test()
+    try:
+        auth = WebClient(token=bot_token).auth_test()
+        bot_id = auth.get("bot_id")
+    except Exception as e:
+        print(f"auth.test failed: {e}")
+        bot_id = None
+
+    is_enterprise_install = resp.get("is_enterprise_install", False)
+    enterprise_id = resp.get("enterprise", {}).get("id") if resp.get("enterprise") else None
+    team_id = resp.get("team", {}).get("id") if resp.get("team") else None
 
     installation_store.save(Installation(
         app_id=resp.get("app_id"),
-        enterprise_id=resp.get("enterprise", {}).get("id") if resp.get("enterprise") else None,
-        team_id=resp.get("team", {}).get("id"),
-        team_name=resp.get("team", {}).get("name"),
+        enterprise_id=enterprise_id,
+        team_id=team_id,
+        team_name=resp.get("team", {}).get("name") if resp.get("team") else None,
         bot_token=bot_token,
-        bot_id=auth.get("bot_id"),
+        bot_id=bot_id,
         bot_user_id=resp.get("bot_user_id"),
         user_id=resp.get("authed_user", {}).get("id", ""),
+        is_enterprise_install=is_enterprise_install,
         installed_at=datetime.datetime.now().timestamp(),
     ))
 

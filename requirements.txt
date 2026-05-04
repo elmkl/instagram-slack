@@ -4,3 +4,5 @@ yt-dlp
 instagrapi
 flask
 slack-sdk
+sqlalchemy
+psycopg2-binary
