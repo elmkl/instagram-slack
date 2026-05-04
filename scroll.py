@@ -3,7 +3,6 @@ import re
 from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from server import start as start_server
 from instagram import init_ig, ig, download_ig_post, download_ig_reel, download_ig_story, fetch_account_reels
 from scroll import doomscrollers, post_next_reel
 from utils import delete_message
