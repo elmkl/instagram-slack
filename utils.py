@@ -11,13 +11,23 @@ def compress_video(input_path, output_path, target_mb):
          "-of", "default=noprint_wrappers=1:nokey=1", input_path],
         capture_output=True, text=True
     )
+    if not result.stdout.strip():
+        raise ValueError(f"ffprobe failed: {result.stderr}")
     duration = float(result.stdout.strip())
     bitrate = int(target_bits / duration)
-    subprocess.run([
-        "ffmpeg", "-i", input_path, "-b:v", str(bitrate),
-        "-bufsize", str(bitrate), "-maxrate", str(bitrate),
+    result = subprocess.run([
+        "ffmpeg", "-i", input_path,
+        "-b:v", str(bitrate),
+        "-bufsize", str(bitrate),
+        "-maxrate", str(bitrate),
+        "-c:a", "aac",
+        "-movflags", "+faststart",
         "-y", output_path
     ], capture_output=True)
+    if result.returncode != 0:
+        raise ValueError(f"ffmpeg failed: {result.stderr.decode()}")
+    if not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
+        raise ValueError("ffmpeg produced empty output")
 
 def delete_message(client, channel, ts):
     if not ts:

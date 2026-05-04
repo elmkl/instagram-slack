@@ -78,13 +78,13 @@ def handle_errors(error, body, logger):
                         client.chat_postEphemeral(
                             channel=channel,
                             user=user,
-                            text="This workspace needs to reinstall the bot since I do not have enough permission (sorry). <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
+                            text="This workspace needs to reinstall the bot. <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
                         )
                     except:
                         # fall back to DM if not in channel
                         client.chat_postMessage(
                             channel=user,
-                            text="This workspace needs to reinstall the bot since I do not have enough permission (sorry). <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
+                            text="This workspace needs to reinstall the bot. <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
                         )
         except Exception as inner:
             print(f"error handler failed: {inner}")
@@ -165,10 +165,7 @@ def handle_scroll(ack, command, client):
         client.chat_postEphemeral(channel=channel, user=user, text="Admin is not logged into instagram.")
         return
 
-    username = command["text"].strip()
-    if not username:
-        client.chat_postEphemeral(channel=channel, user=user, text="Usage: /scroll <username>")
-        return
+    username = command["text"].strip() or "starthackclub"
 
     client.chat_postEphemeral(channel=channel, user=user, text=f"getting reels from @{username}...")
 
