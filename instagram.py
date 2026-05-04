@@ -1,10 +1,35 @@
 import os
+import base64
 import time
 import yt_dlp
 from instagrapi import Client
 from utils import compress_video
 
 ig = None
+
+# write cookies file from env if available
+def init_cookies():
+    cookies_b64 = os.environ.get("COOKIES_B64")
+    if cookies_b64:
+        try:
+            with open("cookies.txt", "wb") as f:
+                f.write(base64.b64decode(cookies_b64))
+            print("cookies loaded from env")
+        except Exception as e:
+            print(f"failed to load cookies: {e}")
+
+def get_ydl_opts(output_path):
+    opts = {
+        "outtmpl": output_path,
+        "quiet": True,
+        "merge_output_format": "mp4",
+        "format": "bestvideo+bestaudio/best",
+    }
+    if os.path.exists("cookies.txt"):
+        opts["cookiefile"] = "cookies.txt"
+    return opts
+
+init_cookies()
 
 def init_ig(session_id):
     global ig
@@ -30,14 +55,7 @@ def fetch_account_reels(username, limit=5):
 
 def download_reel_to_file(url, output_path):
     # download reel using ytdlp
-    ydl_opts = {
-        "outtmpl": output_path,
-        "quiet": True,
-        "merge_output_format": "mp4",
-        "format": "bestvideo+bestaudio/best",
-        #"cookiesfrombrowser": ("firefox",),
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(get_ydl_opts(output_path)) as ydl:
         ydl.download([url])
 
 def download_and_post_reel(url, channel, user, client, ts_timestamp, size_limit_mb, preloaded_path=None):
@@ -126,8 +144,6 @@ def download_ig_story(url, size_limit_mb, client, channel, user):
             os.remove(filepath)
 
 def download_ig_reel(url, size_limit_mb, client, channel, user):
-    import time
-    from utils import compress_video
     ts_timestamp = str(int(time.time()))
     output_path = f"tmp/vids/reel_{ts_timestamp}.mp4"
 
@@ -138,14 +154,7 @@ def download_ig_reel(url, size_limit_mb, client, channel, user):
         os.rename(path, output_path)
     else:
         # downlaoding into a tmp (best quality; merge if needed)
-        ydl_opts = {
-            "outtmpl": output_path,
-            "quiet": True,
-            "merge_output_format": "mp4",
-            "format": "bestvideo+bestaudio/best",
-            #"cookiesfrombrowser": ("firefox",),
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(get_ydl_opts(output_path)) as ydl:
             ydl.download([url])
 
     if not os.path.exists(output_path):
