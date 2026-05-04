@@ -3,4 +3,4 @@ python-dotenv
 yt-dlp
 instagrapi
 flask
-flask-sdk
+slack-sdk
