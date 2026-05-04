@@ -2,3 +2,5 @@ slack-bolt
 python-dotenv
 yt-dlp
 instagrapi
+flask
+flask-sdk

@@ -16,6 +16,7 @@ Python 3, ffmpeg, install dependencies with:
 `pip install -r requirements.txt`
 
 ## Setup
+(disregard all of the above, this is now on HTTP mode and I will rewrite this soon)
 Create an app on Slack and enable Socket Mode.
 
 On the OAuth & Permissions tab, add these bot scopes: `chat:write`, `chat:write.public`, `channels:read`, `groups:read`, `files:write`, and `im:write`
