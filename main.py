@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import datetime
 import requests as req
 from flask import Flask, request, redirect
 from dotenv import load_dotenv
@@ -272,16 +273,21 @@ def oauth_redirect():
     if not resp.get("ok"):
         return f"OAuth failed: {resp.get('error')}", 400
 
-    # save the installation manually
+    # fetch bot_id via auth.test
+    from slack_sdk import WebClient
+    bot_token = resp.get("access_token")
+    auth = WebClient(token=bot_token).auth_test()
+
     installation_store.save(Installation(
         app_id=resp.get("app_id"),
         enterprise_id=resp.get("enterprise", {}).get("id") if resp.get("enterprise") else None,
         team_id=resp.get("team", {}).get("id"),
         team_name=resp.get("team", {}).get("name"),
-        bot_token=resp.get("access_token"),
-        bot_id=resp.get("bot_user_id"),
+        bot_token=bot_token,
+        bot_id=auth.get("bot_id"),
         bot_user_id=resp.get("bot_user_id"),
-        installed_at=__import__("datetime").datetime.now().timestamp(),
+        user_id=resp.get("authed_user", {}).get("id", ""),
+        installed_at=datetime.datetime.now().timestamp(),
     ))
 
     team_id = resp.get("team", {}).get("id", "")
