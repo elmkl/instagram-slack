@@ -1,0 +1,51 @@
+<html>
+<head>
+  <style>
+    body { padding: 10px 15px; font-family: verdana; text-align: center; }
+    ol, ul { display: inline-block; text-align: left; }
+  </style>
+</head>
+<body>
+  <h2>Thank you for installing!</h2>
+  <p id="redirect-msg"></p>
+
+  <br>
+
+  <h2>First step</h2>
+  <p>Invite the bot to a channel: <code>/invite @igscroller</code></p>
+
+  <h2>Setup (channel owners)</h2>
+  <ol>
+    <li>Run <code>/igsettings</code> to open the settings panel</li>
+    <li>Toggle on whichever features you want: Reels, Posts, Stories, Scroll</li>
+  </ol>
+
+  <h2>Features</h2>
+  <ul>
+    <li><strong>Reels / Posts / Stories</strong> — paste any Instagram link in the channel and the bot will download and upload it directly to Slack</li>
+    <li><strong>/igscroll &lt;username&gt;</strong> — browse an account's reels one by one with next/stop buttons</li>
+  </ul>
+
+  <h2>Notes</h2>
+  <ul>
+    <li>Only the channel creator can change settings</li>
+    <li>Settings are saved per channel</li>
+    <li>Private or age-restricted content may not be downloadable</li>
+  </ul>
+
+  <script>
+    // grab team and app id from url params if present (passed from oauth redirect)
+    const params = new URLSearchParams(window.location.search);
+    const team = params.get("team");
+    const app = params.get("app");
+
+    const msg = document.getElementById("redirect-msg");
+    if (team && app) {
+      const slackUrl = `slack://app?team=${team}&id=${app}`;
+      const browserUrl = `https://app.slack.com/client/${team}`;
+      msg.innerHTML = `Redirecting to Slack in 10 seconds... click <a href="${slackUrl}">here</a> to open now, or <a href="${browserUrl}" target="_blank">here</a> for the browser version.`;
+      setTimeout(() => { window.location.href = slackUrl; }, 10000);
+    }
+  </script>
+</body>
+</html>

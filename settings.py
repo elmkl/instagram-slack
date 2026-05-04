@@ -44,43 +44,53 @@ def post_settings_message(client, channel, user):
     def status(val):
         return "✅" if val else "❌"
 
-    client.chat_postEphemeral(
-        channel=channel,
-        user=user,
-        text="Channel settings",
-        blocks=[
-            {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "channel settings, click to toggle features on and off"}
-            },
-            {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": f"{status(s['reels'])} Reels"},
-                        "action_id": "setting_reels",
-                        "value": channel,
-                    },
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": f"{status(s['posts'])} Posts"},
-                        "action_id": "setting_posts",
-                        "value": channel,
-                    },
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": f"{status(s['stories'])} Stories"},
-                        "action_id": "setting_stories",
-                        "value": channel,
-                    },
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": f"{status(s['scroll'])} Scroll"},
-                        "action_id": "setting_scroll",
-                        "value": channel,
-                    },
-                ]
-            }
-        ]
-    )
+    try:
+        client.chat_postEphemeral(
+            channel=channel,
+            user=user,
+            text="Channel settings",
+            blocks=[
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "channel settings, click to toggle features on and off"}
+                },
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": f"{status(s['reels'])} Reels"},
+                            "action_id": "setting_reels",
+                            "value": channel,
+                        },
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": f"{status(s['posts'])} Posts"},
+                            "action_id": "setting_posts",
+                            "value": channel,
+                        },
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": f"{status(s['stories'])} Stories"},
+                            "action_id": "setting_stories",
+                            "value": channel,
+                        },
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": f"{status(s['scroll'])} Scroll"},
+                            "action_id": "setting_scroll",
+                            "value": channel,
+                        },
+                    ]
+                }
+            ]
+        )
+    except Exception as e:
+        if "not_in_channel" in str(e):
+            # bot isn't in the channel yet, DM the user instead
+            client.chat_postMessage(
+                channel=user,
+                text="I'm not in that channel yet. Please invite me first with `/invite @igscroller`, then run `/igsettings` again."
+            )
+        else:
+            raise

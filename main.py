@@ -1,6 +1,6 @@
 import os
 import re
-from flask import Flask, request
+from flask import Flask, request, redirect
 from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
@@ -58,7 +58,7 @@ def handle_errors(error, body, logger):
                 app.client.chat_postEphemeral(
                     channel=channel,
                     user=user,
-                    text="This workspace needs to reinstall the bot with updated permissions (sorry). <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
+                    text="This workspace needs to reinstall the bot with updated permissions. <https://instagram-slack-production.up.railway.app/slack/install|Click here to reinstall.>"
                 )
         except:
             pass
@@ -253,6 +253,19 @@ def events():
 
 @flask_app.route("/slack/oauth_redirect")
 def oauth_redirect():
+    # let bolt handle the oauth exchange, then redirect to index with team+app params
+    code = request.args.get("code")
+    if code:
+        import requests as req
+        resp = req.post("https://slack.com/api/oauth.v2.access", data={
+            "code": code,
+            "client_id": os.environ["SLACK_CLIENT_ID"],
+            "client_secret": os.environ["SLACK_CLIENT_SECRET"],
+        }).json()
+        if resp.get("ok"):
+            team_id = resp.get("team", {}).get("id", "")
+            app_id = resp.get("app_id", "")
+            return redirect(f"/?team={team_id}&app={app_id}")
     return handler.handle(request)
 
 @flask_app.route("/slack/install")
