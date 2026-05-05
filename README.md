@@ -13,7 +13,7 @@ Python 3, ffmpeg, PostgreSQL, install dependencies with:
 `pip install -r requirements.txt`
  
 ## Setup
-Create an app on Slack (HTTP mode, not Socket Mode this time).
+Create an app on Slack (HTTP mode, not Socket Mode).
  
 On the **OAuth & Permissions** tab, add these bot scopes: `reactions:write`, `app_mentions:read`, `channels:history`, `channels:read`, `chat:write`, `commands`, `files:write`, `groups:history`, `groups:read`, `im:history`, `reactions:read`, `team:read`
  
